@@ -22,12 +22,6 @@ Files are located to "%appdata%/Lync logs" folder
 Source is in "src" folder
 The icon that appears in the system tray can be changed. Just replace the file "icon.ico"
 
-
-## Known problems
-
-when you start a lynclogger, already openned conversations wont be logged
-
-
 ## TODO
 
 log audio conversations
