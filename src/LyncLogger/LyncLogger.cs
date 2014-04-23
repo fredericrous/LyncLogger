@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Lync.Model;
 using Microsoft.Lync.Model.Conversation;
-using Microsoft.Lync.Model.Extensibility;
 using Microsoft.Lync.Model.Conversation.AudioVideo;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
+using System.ComponentModel;
+using System.Reflection;
 
 namespace LyncLogger
 {
@@ -17,30 +17,74 @@ namespace LyncLogger
         private static string LOG_HEADER = "// Convestation started with {0} on {1}"; //header of the file
         private static string LOG_MIDDLE_HEADER = "---- conversation resumed ----"; //middle header of the file
         private static string LOG_MESSAGE = "{0} ({1}): {2}"; //msg formating
+        private static string LOG_AUDIO = "Audio conversation {0} at {1}"; //msg audio started/ended formating
+
+        private static int DELAY_RETRY_AUTHENTICATION = 20000; // delay before authentication retry (in ms)
+        private static string EXCEPTION_LYNC_NOCLIENT = "The host process is not running";
+
         private static DirectoryInfo _folderLog; 
         private static string _fileLog;
 
-        /// <summary>
-        /// Constructor, Listen on new openned conversations
-        /// </summary>
-        /// <param name="folderLog">folder to log conversation files</param>
         public LyncLogger(string folderLog)
         {
             _folderLog = new DirectoryInfo(folderLog);
             _fileLog = Path.Combine(folderLog, "conversation_{0}_{1}.log");
 
+            run();
+        }
+
+        /// <summary>
+        /// Constructor, Listen on new openned conversations
+        /// </summary>
+        /// <param name="folderLog">folder to log conversation files</param>
+        public void run()
+        {
             try
             {
                 //Start the conversation
                 LyncClient client = LyncClient.GetClient();
 
-                ConversationManager conversations = client.ConversationManager;
 
-                conversations.ConversationAdded += conversations_ConversationAdded;
+                //handles the states of the logger displayed in the systray
+                client.StateChanged += (s, e) =>
+                {
+                    if (e.NewState == ClientState.SignedOut)
+                    {
+                        NotifyIconSystray.ChangeLoggerStatus(false);
+                        run();
+                    }
+                };
+
+                if (client.State == ClientState.SignedIn) 
+                {
+                    //listen on conversation in order to log messages
+                    ConversationManager conversations = client.ConversationManager;
+
+                    //check our listener hasn't 
+                    var handler = typeof(ConversationManager).GetField("ConversationAdded", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(conversations) as Delegate;
+
+                    if (handler == null)
+                    {
+                        conversations.ConversationAdded += conversations_ConversationAdded;
+                        NotifyIconSystray.ChangeLoggerStatus(true);
+                    }
+                   
+                }
+                else
+                {
+                    Thread.Sleep(DELAY_RETRY_AUTHENTICATION / 10);
+                    run();
+                }
+                
             }
             catch (LyncClientException lyncClientException)
             {
                 Console.Out.WriteLine(lyncClientException);
+                if (lyncClientException.Message.Equals(EXCEPTION_LYNC_NOCLIENT))
+                {
+                    Thread.Sleep(DELAY_RETRY_AUTHENTICATION);
+                    run();
+                }
             }
             catch (SystemException systemException)
             {
@@ -64,7 +108,9 @@ namespace LyncLogger
         /// <param name="e"></param>
         static void conversations_ConversationAdded(object sender, ConversationManagerEventArgs e)
         {
-            String firstContactName = e.Conversation.Participants[1].Contact.GetContactInformation(ContactInformationType.DisplayName).ToString();
+            String firstContactName = e.Conversation.Participants.Count > 1
+            ? e.Conversation.Participants[1].Contact.GetContactInformation(ContactInformationType.DisplayName).ToString()
+            : "meet now";
             DateTime currentTime = DateTime.Now;
 
             String fileLog = String.Format(_fileLog, firstContactName.Replace(", ", "_"), currentTime.ToString("yyyyMMdd"));
@@ -104,7 +150,7 @@ namespace LyncLogger
             };
 
             //get audio conversation informations about user (not the other participants)
-            AVModality callImModality = (AVModality)e.Conversation.Participants[0].Modalities[ModalityTypes.AudioVideo];
+            AVModality callImModality = (AVModality)conv.Participants[0].Modalities[ModalityTypes.AudioVideo];
             //notify call 
             callImModality.ModalityStateChanged += (_sender, _e) =>
             {
@@ -128,7 +174,7 @@ namespace LyncLogger
                 {
                     using (StreamWriter writer = new StreamWriter(stream))
                     {
-                        writer.WriteLine(String.Format("Audio conversation {0} at {1}",
+                        writer.WriteLine(String.Format(LOG_AUDIO,
                             (e.NewState == ModalityState.Connected) ? "started" : "ended",
                             DateTime.Now.ToString("HH:mm:ss")
                         ));

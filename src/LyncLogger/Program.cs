@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
+using System.ComponentModel;
 
 namespace LyncLogger
 {
@@ -15,7 +16,7 @@ namespace LyncLogger
     {
         //folder to log conversations
         private static String LOG_FOLDER = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lync logs");
-
+  
         /// <summary>
         /// create directory if doesnt exist
         /// </summary>
@@ -28,47 +29,24 @@ namespace LyncLogger
             }
         }
 
-        /// <summary>
-        /// add notification icon to system tray bar (near the clock)
-        /// quit option is available by default
-        /// </summary>
-        /// <param name="name">name displayed on mouse hover</param>
-        /// <param name="items">items to add to the context menu</param>
-        private static void addNotifyIcon(String name, MenuItem[] items)
-        {
-            var notifyIcon = new System.Windows.Forms.NotifyIcon();
-            string iconPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\icon.ico"; //icon in base folder
-            try
-            {
-                notifyIcon.Icon = new Icon(iconPath);
-            }
-            catch (Exception)
-            { //dev mode
-                notifyIcon.Icon = new Icon(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\..\..\icon.ico");
-            }
-            notifyIcon.Text = name;
-            notifyIcon.Visible = true;
-
-            ContextMenu contextMenu1 = new ContextMenu();
-            contextMenu1.MenuItems.AddRange(items);
-            contextMenu1.MenuItems.Add(new MenuItem("Quit", (s, e) => { notifyIcon.Dispose();  Process.GetCurrentProcess().Kill(); }));
-
-            notifyIcon.ContextMenu = contextMenu1;
-        }
-        
         static void Main(string[] args)
         {
             // create log directory if missing
             createDirectoryIfMissing(LOG_FOLDER);
 
             //-- -- -- Add notification icon
-            addNotifyIcon("Lync Logger", new MenuItem[] {
+            NotifyIconSystray.addNotifyIcon("Lync Logger", new MenuItem[] {
                 new MenuItem("Lync History", (s, e) => { Process.Start(LOG_FOLDER); })
             });
 
             //-- -- -- Handles LYNC operations
-            new LyncLogger(LOG_FOLDER);
-
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.DoWork += (s, e) =>
+            {
+                new LyncLogger(LOG_FOLDER);
+            };
+            bw.RunWorkerAsync();
+            
             //prevent the application from exiting right away
             Application.Run();
         }
