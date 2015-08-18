@@ -9,11 +9,14 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
 using System.ComponentModel;
+using log4net;
 
 namespace LyncLogger
 {
     class Program
     {
+        private static readonly ILog _log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         //folder to log conversations
         private static String LOG_FOLDER = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lync logs");
   
@@ -43,10 +46,28 @@ namespace LyncLogger
             BackgroundWorker bw = new BackgroundWorker();
             bw.DoWork += (s, e) =>
             {
-                new LyncLogger(LOG_FOLDER);
+                try
+                {
+                    new LyncLogger(LOG_FOLDER);
+                }
+                catch (FileNotFoundException)
+                {
+                    string error_msg = "Software is missing dlls, please visit https://github.com/Zougi/LyncLogger to read how to install the requirements";
+                    _log.Error(error_msg);
+
+                    //set a user friendly error
+                    NotifyIconSystray.setNotifyIcon("icon_ooo.ico", error_msg);
+                }
+                catch (Exception ex)
+                {
+                    _log.Error("Lync Logger Exception", ex);
+                    
+                    //exit app properly
+                    NotifyIconSystray.disposeNotifyIcon();
+                }
             };
             bw.RunWorkerAsync();
-            
+
             //prevent the application from exiting right away
             Application.Run();
         }

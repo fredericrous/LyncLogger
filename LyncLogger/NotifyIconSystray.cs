@@ -27,12 +27,32 @@ namespace LyncLogger
         /// <param name="status"></param>
         public static void LoggerStatus_DelegateMethod(bool status)
         {
-            notifyIcon.Text = String.Format("{0}\nstatus: {1}", _name, status ? "on" : "off");
+            string text = String.Format("{0}\nstatus: {1}", _name, status ? "on" : "off");
 
             string nameIcon = status ? "icon.ico" : "icon_off.ico";
 
+            setNotifyIcon(nameIcon, text);
+        }
+        /// <summary>
+        /// This delegate allows us to call LoggerStatus_DelegateMethod in the backgroundworker
+        /// It changes the indicator that displays the state of the app.
+        /// </summary>
+        public static LoggerStatus ChangeLoggerStatus = LoggerStatus_DelegateMethod;
+
+        /// <summary>
+        /// set text and icon for the taskbar
+        /// icon must be in same folder or solution folder
+        /// </summary>
+        /// <param name="nameIcon"></param>
+        /// <param name="text"></param>
+        public static void setNotifyIcon(string nameIcon, string text)
+        {
             string currDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string iconPath = String.Format(@"{0}\{1}", currDirectory, nameIcon); //icon in base folder
+
+            //set text that support 128 char instead of 64
+            Fixes.SetNotifyIconText(notifyIcon, text);
+
             try
             {
                 notifyIcon.Icon = new Icon(iconPath);
@@ -42,11 +62,7 @@ namespace LyncLogger
                 notifyIcon.Icon = new Icon(String.Format(@"{0}\..\..\{1}", currDirectory, nameIcon));
             }
         }
-        /// <summary>
-        /// This delegate allows us to call LoggerStatus_DelegateMethod in the backgroundworker
-        /// It changes the indicator that displays the state of the app.
-        /// </summary>
-        public static LoggerStatus ChangeLoggerStatus = LoggerStatus_DelegateMethod;
+
 
         /// <summary>
         /// add notification icon to system tray bar (near the clock)
@@ -66,15 +82,41 @@ namespace LyncLogger
             contextMenu1.MenuItems.AddRange(items);
             contextMenu1.MenuItems.Add(new MenuItem("Quit", (s, e) =>
             {
-                notifyIcon.Dispose();
-                foreach (ProcessThread thread in Process.GetCurrentProcess().Threads)
-	            {
-                    thread.Dispose();
-	            }
-                Process.GetCurrentProcess().Kill();
+                disposeNotifyIcon();
             }));
             notifyIcon.ContextMenu = contextMenu1;
 
+        }
+
+        public static void disposeNotifyIcon()
+        {
+            notifyIcon.Dispose();
+            foreach (ProcessThread thread in Process.GetCurrentProcess().Threads)
+            {
+                thread.Dispose();
+            }
+            Process.GetCurrentProcess().Kill();
+        }
+    }
+
+    public class Fixes
+    {
+        /// <summary>
+        /// Set text tooltip to 128 char limit instead of 64
+        /// http://stackoverflow.com/questions/579665/how-can-i-show-a-systray-tooltip-longer-than-63-chars
+        /// </summary>
+        /// <param name="ni"></param>
+        /// <param name="text"></param>
+        public static void SetNotifyIconText(NotifyIcon ni, string text)
+        {
+            if (text.Length >= 128) throw new ArgumentOutOfRangeException("Text limited to 127 characters");
+
+            Type t = typeof(NotifyIcon);
+            BindingFlags hidden = BindingFlags.NonPublic | BindingFlags.Instance;
+            t.GetField("text", hidden).SetValue(ni, text);
+
+            if ((bool)t.GetField("added", hidden).GetValue(ni))
+                t.GetMethod("UpdateIcon", hidden).Invoke(ni, new object[] { true });
         }
     }
 }
