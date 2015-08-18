@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using System.ComponentModel;
 using System.Reflection;
+using log4net;
 
 namespace LyncLogger
 {
@@ -25,12 +26,14 @@ namespace LyncLogger
         private static DirectoryInfo _folderLog; 
         private static string _fileLog;
 
+        private static readonly ILog _log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         public LyncLogger(string folderLog)
         {
             _folderLog = new DirectoryInfo(folderLog);
             _fileLog = Path.Combine(folderLog, "conversation_{0}_{1}.log");
 
-            run();
+           run();
         }
 
         /// <summary>
@@ -43,13 +46,13 @@ namespace LyncLogger
             {
                 //Start the conversation
                 LyncClient client = LyncClient.GetClient();
-
-
+                
                 //handles the states of the logger displayed in the systray
                 client.StateChanged += (s, e) =>
                 {
                     if (e.NewState == ClientState.SignedOut)
                     {
+                        _log.Info("User signed out. Watch for signed in event");
                         NotifyIconSystray.ChangeLoggerStatus(false);
                         run();
                     }
@@ -60,18 +63,25 @@ namespace LyncLogger
                     //listen on conversation in order to log messages
                     ConversationManager conversations = client.ConversationManager;
 
-                    //check our listener hasn't 
+                    //check our listener is not already registered
                     var handler = typeof(ConversationManager).GetField("ConversationAdded", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(conversations) as Delegate;
 
                     if (handler == null)
                     {
+                        _log.Info("watch conversation");
                         conversations.ConversationAdded += conversations_ConversationAdded;
                         NotifyIconSystray.ChangeLoggerStatus(true);
+                    }
+                    else
+                    {
+                        _log.Info("Conversation already in watching state");
+                        _log.Info(handler);
                     }
                    
                 }
                 else
                 {
+                    _log.Info("Not signed in. Watch for signed in event");
                     Thread.Sleep(DELAY_RETRY_AUTHENTICATION / 10);
                     run();
                 }
@@ -79,11 +89,15 @@ namespace LyncLogger
             }
             catch (LyncClientException lyncClientException)
             {
-                Console.Out.WriteLine(lyncClientException);
                 if (lyncClientException.Message.Equals(EXCEPTION_LYNC_NOCLIENT))
                 {
+                    _log.Info("Lync Known Exception: no client");
                     Thread.Sleep(DELAY_RETRY_AUTHENTICATION);
                     run();
+                }
+                else
+                {
+                    _log.Warn("Lync Exception", lyncClientException);
                 }
             }
             catch (SystemException systemException)
@@ -91,10 +105,11 @@ namespace LyncLogger
                 if (IsLyncException(systemException))
                 {
                     // Log the exception thrown by the Lync Model API.
-                    Console.WriteLine("Error: " + systemException);
+                    _log.Warn("Lync Exception", systemException);
                 }
                 else
                 {
+                    _log.Warn("Exception: ", systemException);
                     // Rethrow the SystemException which did not come from the Lync Model API.
                     throw;
                 }
@@ -145,6 +160,7 @@ namespace LyncLogger
                 //detect all messages (including user's)
                 remoteImModality.InstantMessageReceived += (__sender, __e) =>
                 {
+                    _log.Info("message event: " + __e.Text);
                     remoteImModality_InstantMessageReceived(__sender, __e, fileLog);
                 };
             };
@@ -154,6 +170,7 @@ namespace LyncLogger
             //notify call 
             callImModality.ModalityStateChanged += (_sender, _e) =>
             {
+                _log.Info("call event: " + _e.NewState);
                 callImModality_ModalityStateChanged(_e, fileLog);
             };
         }
