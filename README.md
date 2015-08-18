@@ -11,6 +11,11 @@ This program adds an icon in the system tray bar.
 Right-click brings a menu. You can access the history folder from there or close the program
 
 
+## Download
+
+Download the latest version of LyncLogger here:
+https://github.com/Zougi/LyncLogger/releases/download/v1.1/LyncLogger.v1.1.zip
+
 ## Requirement
 
 This project depends on Microsoft dll:
