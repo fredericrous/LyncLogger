@@ -198,6 +198,18 @@ namespace LyncLogger
                     }
                 }
             }
+
+            //record conversation
+            if (e.NewState == ModalityState.Connected) // || e.NewState == ModalityState.Connecting)
+            {
+                AudioLogger.Start(fileLog);
+            }
+
+            //end recording
+            if (e.NewState == ModalityState.Disconnected)
+            {
+                AudioLogger.Stop();
+            }
         }
 
         /// <summary>

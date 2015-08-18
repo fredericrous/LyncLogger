@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.ComponentModel;
 using log4net;
+using Microsoft.Win32;
 
 namespace LyncLogger
 {
@@ -39,8 +40,21 @@ namespace LyncLogger
 
             //-- -- -- Add notification icon
             NotifyIconSystray.addNotifyIcon("Lync Logger", new MenuItem[] {
-                new MenuItem("Lync History", (s, e) => { Process.Start(LOG_FOLDER); })
+                new MenuItem("Lync History", (s, e) => { Process.Start(LOG_FOLDER); }),
+                new MenuItem("Switch Audio logger On/Off", (s, e) => { AudioLogger.Switch(); })
             });
+
+            //-- -- -- Handles Sound record operations
+
+            registerKey("Software\\LyncLogger", "Audio", "Activated");
+
+            //BackgroundWorker bw_soundrecord = new BackgroundWorker();
+            //bw_soundrecord.DoWork += (s, e) =>
+            //{
+            AudioLogger.Initialize(LOG_FOLDER);
+
+            //};
+            //bw_soundrecord.RunWorkerAsync();
 
             //-- -- -- Handles LYNC operations
             BackgroundWorker bw = new BackgroundWorker();
@@ -70,6 +84,31 @@ namespace LyncLogger
 
             //prevent the application from exiting right away
             Application.Run();
+        }
+
+
+        /// <summary>
+        /// Create registry key to keep settings of recording for audio
+        /// If registry key already exists, set AudioLogger
+        /// </summary>
+        /// <param name="keyName"></param>
+        /// <param name="valueName"></param>
+        /// <param name="value"></param>
+        private static void registerKey(string keyName, string valueName, string value)
+        {
+            RegistryKey key = Registry.CurrentUser;
+            RegistryKey LyncLoggerKey = key.OpenSubKey(keyName);
+            if (LyncLoggerKey != null)
+            {
+                AudioLogger.isAllowedRecording = ((string)LyncLoggerKey.GetValue(valueName) == value);
+                LyncLoggerKey.Close();
+            }
+            else
+            {
+                RegistryKey subkey = key.CreateSubKey(keyName);
+                subkey.SetValue(valueName, value);
+                subkey.Close();
+            }
         }
         
     }
