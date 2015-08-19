@@ -29,10 +29,11 @@ namespace LyncLogger
         {
             string text = String.Format("{0}\nstatus: {1}", _name, status ? "on" : "off");
 
-            string nameIcon = status ? "icon.ico" : "icon_off.ico";
+            string iconName = status ? "icon.ico" : "icon_off.ico";
 
-            setNotifyIcon(nameIcon, text);
+            setNotifyIcon(iconName, text);
         }
+
         /// <summary>
         /// This delegate allows us to call LoggerStatus_DelegateMethod in the backgroundworker
         /// It changes the indicator that displays the state of the app.
@@ -41,26 +42,20 @@ namespace LyncLogger
 
         /// <summary>
         /// set text and icon for the taskbar
-        /// icon must be in same folder or solution folder
+        /// Icon must be in the project as embedded resource
         /// </summary>
         /// <param name="nameIcon"></param>
         /// <param name="text"></param>
-        public static void setNotifyIcon(string nameIcon, string text)
+        public static void setNotifyIcon(string iconName, string text)
         {
-            string currDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string iconPath = String.Format(@"{0}\{1}", currDirectory, nameIcon); //icon in base folder
-
             //set text that support 128 char instead of 64
             Fixes.SetNotifyIconText(notifyIcon, text);
 
-            try
-            {
-                notifyIcon.Icon = new Icon(iconPath);
-            }
-            catch (Exception)
-            { //dev mode
-                notifyIcon.Icon = new Icon(String.Format(@"{0}\..\..\{1}", currDirectory, nameIcon));
-            }
+            //get icon by its name. Icon must be in the project as embedded resource
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            string ns = assembly.EntryPoint.DeclaringType.Namespace;
+            Stream iconStream = assembly.GetManifestResourceStream(string.Format("{0}.{1}", ns, iconName));
+            notifyIcon.Icon = new Icon(iconStream);
         }
 
 

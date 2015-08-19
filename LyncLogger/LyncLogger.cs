@@ -171,7 +171,7 @@ namespace LyncLogger
             callImModality.ModalityStateChanged += (_sender, _e) =>
             {
                 _log.Info("call event: " + _e.NewState);
-                callImModality_ModalityStateChanged(_e, fileLog);
+                callImModality_ModalityStateChanged(_e, fileLog + ".mp3");
             };
         }
 
@@ -202,13 +202,14 @@ namespace LyncLogger
             //record conversation
             if (e.NewState == ModalityState.Connected) // || e.NewState == ModalityState.Connecting)
             {
-                AudioLogger.Start(fileLog);
+                _log.Info("Start recording to " + fileLog);
+                AudioLogger.Instance.Start(fileLog);
             }
 
             //end recording
             if (e.NewState == ModalityState.Disconnected)
             {
-                AudioLogger.Stop();
+                AudioLogger.Instance.Stop();
             }
         }
 

@@ -41,20 +41,13 @@ namespace LyncLogger
             //-- -- -- Add notification icon
             NotifyIconSystray.addNotifyIcon("Lync Logger", new MenuItem[] {
                 new MenuItem("Lync History", (s, e) => { Process.Start(LOG_FOLDER); }),
-                new MenuItem("Switch Audio logger On/Off", (s, e) => { AudioLogger.Switch(); })
+                new MenuItem("Switch Audio logger On/Off", (s, e) => {  AudioLogger.Instance.Switch(); })
             });
 
             //-- -- -- Handles Sound record operations
 
             registerKey("Software\\LyncLogger", "Audio", "Activated");
-
-            //BackgroundWorker bw_soundrecord = new BackgroundWorker();
-            //bw_soundrecord.DoWork += (s, e) =>
-            //{
-            AudioLogger.Initialize(LOG_FOLDER);
-
-            //};
-            //bw_soundrecord.RunWorkerAsync();
+            AudioLogger.Instance.Initialize(LOG_FOLDER);
 
             //-- -- -- Handles LYNC operations
             BackgroundWorker bw = new BackgroundWorker();
@@ -66,11 +59,12 @@ namespace LyncLogger
                 }
                 catch (FileNotFoundException)
                 {
-                    string error_msg = "Software is missing dlls, please visit https://github.com/Zougi/LyncLogger to read how to install the requirements";
+                    string error_msg = "Software is missing dlls, please visit https://github.com/Zougi/LyncLogger";
                     _log.Error(error_msg);
 
                     //set a user friendly error
-                    NotifyIconSystray.setNotifyIcon("icon_ooo.ico", error_msg);
+                    string iconName = "icon_ooo.ico";
+                    NotifyIconSystray.setNotifyIcon(iconName, error_msg);
                 }
                 catch (Exception ex)
                 {
@@ -100,7 +94,7 @@ namespace LyncLogger
             RegistryKey LyncLoggerKey = key.OpenSubKey(keyName);
             if (LyncLoggerKey != null)
             {
-                AudioLogger.isAllowedRecording = ((string)LyncLoggerKey.GetValue(valueName) == value);
+                AudioLogger.Instance.isAllowedRecording = ((string)LyncLoggerKey.GetValue(valueName) == value);
                 LyncLoggerKey.Close();
             }
             else
