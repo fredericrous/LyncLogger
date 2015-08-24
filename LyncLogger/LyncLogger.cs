@@ -23,8 +23,9 @@ namespace LyncLogger
         private static int DELAY_RETRY_AUTHENTICATION = 20000; // delay before authentication retry (in ms)
         private static string EXCEPTION_LYNC_NOCLIENT = "The host process is not running";
 
-        private static DirectoryInfo _folderLog; 
+        private static DirectoryInfo _folderLog;
         private static string _fileLog;
+        private static string _name_shortener;
 
         private static readonly ILog _log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -32,6 +33,7 @@ namespace LyncLogger
         {
             _folderLog = new DirectoryInfo(folderLog);
             _fileLog = Path.Combine(folderLog, "conversation_{0}_{1}.log");
+            _name_shortener = SettingsManager.ReadSetting("shortenName");
 
            run();
         }
@@ -81,7 +83,7 @@ namespace LyncLogger
                 }
                 else
                 {
-                    _log.Info("Not signed in. Watch for signed in event");
+                    _log.Info(string.Format("Not signed in. Watch for signed in event. Retry in {0} ms", DELAY_RETRY_AUTHENTICATION / 10));
                     Thread.Sleep(DELAY_RETRY_AUTHENTICATION / 10);
                     run();
                 }
@@ -91,7 +93,7 @@ namespace LyncLogger
             {
                 if (lyncClientException.Message.Equals(EXCEPTION_LYNC_NOCLIENT))
                 {
-                    _log.Info("Lync Known Exception: no client");
+                    _log.Info(string.Format("Lync Known Exception: no client. Retry in {0} ms", DELAY_RETRY_AUTHENTICATION));
                     Thread.Sleep(DELAY_RETRY_AUTHENTICATION);
                     run();
                 }
@@ -235,7 +237,11 @@ namespace LyncLogger
             {
                 using (StreamWriter writer = new StreamWriter(stream))
                 {
-                    writer.WriteLine(String.Format(LOG_MESSAGE, name.Substring(name.IndexOf(", ") + 2), DateTime.Now.ToString("HH:mm:ss"), message));
+                    if (name.Contains(_name_shortener))
+                    {
+                        name = name.Substring(name.IndexOf(_name_shortener) + _name_shortener.Length);
+                    }
+                    writer.WriteLine(String.Format(LOG_MESSAGE, name, DateTime.Now.ToString("HH:mm:ss"), message));
                 }
             }
         }

@@ -61,7 +61,10 @@ namespace LyncLogger
         public void Start(string fileLog)
         {
             if (!_isAllowedRecording)
+            {
+                _log.Warn("recording not active (known)");
                 return;
+            }
             _fileLog = fileLog;
 
             if (!Directory.Exists(TEMP_FOLDER))
@@ -100,11 +103,12 @@ namespace LyncLogger
 
             try
             {
-                soundRecorder.MixerWave(TEMP_FOLDER, string.Format("{0}\\{1}", _folderLog, _fileLog));
+                _log.Info(string.Format("build audio record: {0} :", Path.Combine(_folderLog, _fileLog)));
+                soundRecorder.MixerWave(TEMP_FOLDER, Path.Combine(_folderLog, _fileLog));
             }
             catch (Exception ex)
             {
-                _log.Error("error building audio record file", ex);
+                _log.Error(string.Format("error building audio record file {0} :", Path.Combine(_folderLog, _fileLog)), ex);
             }
 
             try
