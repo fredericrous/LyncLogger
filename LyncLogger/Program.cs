@@ -17,10 +17,7 @@ namespace LyncLogger
     class Program
     {
         private static readonly ILog _log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
-        //folder to log conversations
-        private static String LOG_FOLDER = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lync logs");
-  
+          
         /// <summary>
         /// create directory if doesnt exist
         /// </summary>
@@ -35,6 +32,9 @@ namespace LyncLogger
 
         static void Main(string[] args)
         {
+            //folder to log conversations
+            string LOG_FOLDER = Environment.ExpandEnvironmentVariables(SettingsManager.ReadSetting("logfolder"));
+
             // create log directory if missing
             createDirectoryIfMissing(LOG_FOLDER);
 
