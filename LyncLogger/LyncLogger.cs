@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.ComponentModel;
 using System.Reflection;
 using log4net;
+using IconSystray;
 
 namespace LyncLogger
 {
@@ -55,7 +56,7 @@ namespace LyncLogger
                     if (e.NewState == ClientState.SignedOut)
                     {
                         _log.Info("User signed out. Watch for signed in event");
-                        NotifyIconSystray.ChangeLoggerStatus(false);
+                        NotifyIconSystray.ChangeStatus(false);
                         run();
                     }
                 };
@@ -72,7 +73,7 @@ namespace LyncLogger
                     {
                         _log.Info("watch conversation");
                         conversations.ConversationAdded += conversations_ConversationAdded;
-                        NotifyIconSystray.ChangeLoggerStatus(true);
+                        NotifyIconSystray.ChangeStatus(true);
                     }
                     else
                     {

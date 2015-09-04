@@ -11,6 +11,7 @@ using System.IO;
 using System.ComponentModel;
 using log4net;
 using Microsoft.Win32;
+using IconSystray;
 
 namespace LyncLogger
 {

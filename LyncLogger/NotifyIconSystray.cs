@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace LyncLogger
+namespace IconSystray
 {
     /// <summary>
     /// Handles the systray icon
@@ -17,28 +17,46 @@ namespace LyncLogger
     static class NotifyIconSystray
     {
         private static NotifyIcon notifyIcon;
-        public delegate void LoggerStatus(bool status);
+        public delegate void Status(bool status);
         private static string _name;
+        public delegate void CallbackQuit();
+        public static event CallbackQuit OnQuit;
+
+        private static string _on_text = "on";
+        private static string _on_image = "icon.ico";
+        public static void setOnIcon(string text, string imageName)
+        {
+            _on_text = text;
+            _on_image = imageName;
+        }
+
+        private static string _off_text = "off";
+        private static string _off_image = "icon_off.ico";
+        public static void setOffIcon(string text, string imageName)
+        {
+            _off_text = text;
+            _off_image = imageName;
+        }
 
         /// <summary>
         /// This method allows to change the state of icon and tooltip
         /// true = Log Active: the logger detected the client and is active.
         /// </summary>
         /// <param name="status"></param>
-        public static void LoggerStatus_DelegateMethod(bool status)
+        public static void Status_DelegateMethod(bool status)
         {
-            string text = String.Format("{0}\nstatus: {1}", _name, status ? "on" : "off");
+            string text = String.Format("{0}\nstatus: {1}", _name, status ? _on_text : _off_text);
 
-            string iconName = status ? "icon.ico" : "icon_off.ico";
+            string iconName = status ? _on_image : _off_image;
 
             setNotifyIcon(iconName, text);
         }
 
         /// <summary>
-        /// This delegate allows us to call LoggerStatus_DelegateMethod in the backgroundworker
+        /// This delegate allows us to call Status_DelegateMethod in the backgroundworker
         /// It changes the indicator that displays the state of the app.
         /// </summary>
-        public static LoggerStatus ChangeLoggerStatus = LoggerStatus_DelegateMethod;
+        public static Status ChangeStatus = Status_DelegateMethod;
 
         /// <summary>
         /// set text and icon for the taskbar
@@ -65,18 +83,25 @@ namespace LyncLogger
         /// </summary>
         /// <param name="name">name displayed on mouse hover</param>
         /// <param name="items">items to add to the context menu</param>
-        public static void addNotifyIcon(String name, MenuItem[] items)
+        public static void addNotifyIcon(String name, MenuItem[] items = null)
         {
             _name = name;
             notifyIcon = new System.Windows.Forms.NotifyIcon();
             notifyIcon.Visible = true;
 
-            LoggerStatus_DelegateMethod(false); //set name and icon
+            Status_DelegateMethod(false); //set name and icon
 
             ContextMenu contextMenu1 = new ContextMenu();
-            contextMenu1.MenuItems.AddRange(items);
+            if (items != null)
+            {
+                contextMenu1.MenuItems.AddRange(items);
+            }
             contextMenu1.MenuItems.Add(new MenuItem("Quit", (s, e) =>
             {
+                if (OnQuit != null)
+                {
+                    OnQuit();
+                }
                 disposeNotifyIcon();
             }));
             notifyIcon.ContextMenu = contextMenu1;
